@@ -43,8 +43,8 @@ abstract class DataBaseKT : RoomDatabase() {
 
         private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("INSERT INTO skbfun (name, isKeep, position) VALUES ('TextEdit', 0, 15)")
-                db.execSQL("INSERT INTO skbfun (name, isKeep, position) VALUES ('TextEdit', 1, 0)")
+                db.execSQL("INSERT OR IGNORE INTO skbfun (name, isKeep, position) VALUES ('TextEdit', 0, 15)")
+                db.execSQL("INSERT OR IGNORE INTO skbfun (name, isKeep, position) VALUES ('TextEdit', 1, 0)")
             }
         }
 
