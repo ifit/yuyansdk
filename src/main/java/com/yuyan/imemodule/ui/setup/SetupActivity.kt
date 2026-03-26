@@ -1,4 +1,3 @@
-
 package com.yuyan.imemodule.ui.setup
 
 import android.app.NotificationChannel
@@ -81,9 +80,6 @@ class SetupActivity : FragmentActivity() {
         }
         firstUndonePage()?.let { viewPager.currentItem = it.ordinal }
         createNotificationChannel()
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {}
-        })
     }
 
     override fun onStart() {
