@@ -122,6 +122,7 @@ class ThemePrefs(sharedPreferences: SharedPreferences) :
     ) {
         keyboardSymbol.getValue()
     }
+
     val keyBorder = switch(R.string.key_border, "key_border", true)
 
     val keyXMargin: ManagedPreference.PInt
