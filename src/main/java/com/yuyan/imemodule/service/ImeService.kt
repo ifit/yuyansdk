@@ -150,13 +150,6 @@ class ImeService : InputMethodService() {
         super.onWindowShown()
     }
 
-    override fun onWindowShown() {
-        if(isWindowShown) return
-        isWindowShown = true
-        if (::mInputView.isInitialized) mInputView.onWindowShown()
-        super.onWindowShown()
-    }
-
     override fun onWindowHidden() {
         isWindowShown = false
         if(::mInputView.isInitialized) mInputView.onWindowHidden()
