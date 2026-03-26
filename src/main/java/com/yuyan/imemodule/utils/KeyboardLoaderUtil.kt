@@ -7,6 +7,8 @@ import com.yuyan.imemodule.entity.keyboard.SoftKey
 import com.yuyan.imemodule.entity.keyboard.SoftKeyToggle
 import com.yuyan.imemodule.entity.keyboard.SoftKeyboard
 import com.yuyan.imemodule.entity.keyboard.ToggleState
+import com.yuyan.imemodule.keyboard.KeyPreset
+import com.yuyan.imemodule.keyboard.KeyboardData
 import com.yuyan.imemodule.manager.InputModeSwitcherManager
 import com.yuyan.imemodule.prefs.AppPrefs
 import com.yuyan.imemodule.prefs.behavior.DoublePinyinSchemaMode
@@ -18,16 +20,7 @@ import com.yuyan.imemodule.keyboard.doubleNaturalMnemonicPreset
 import com.yuyan.imemodule.keyboard.doubleSogouMnemonicPreset
 import com.yuyan.imemodule.keyboard.doubleZiguangMnemonicPreset
 import com.yuyan.imemodule.keyboard.lx17MnemonicPreset
-import com.yuyan.imemodule.keyboard.lx17PYKeyNumberPreset
-import com.yuyan.imemodule.keyboard.lx17PYKeyPreset
-import com.yuyan.imemodule.keyboard.qwertyKeyNumberPreset
-import com.yuyan.imemodule.keyboard.qwertyKeyPreset
-import com.yuyan.imemodule.keyboard.qwertyPYKeyNumberPreset
-import com.yuyan.imemodule.keyboard.qwertyPYKeyPreset
-import com.yuyan.imemodule.keyboard.strokeKeyPreset
-import com.yuyan.imemodule.keyboard.t9NumberKeyPreset
-import com.yuyan.imemodule.keyboard.t9PYKeyPreset
-import com.yuyan.imemodule.keyboard.textEditKeyPreset
+import com.yuyan.imemodule.prefs.behavior.SkbStyleMode
 import java.util.LinkedList
 
 /**
@@ -37,11 +30,13 @@ class KeyboardLoaderUtil private constructor() {
     private var rimeValue: String? = null
     private var mSkbValue: Int = 0
     private var numberLine: Boolean = false
+    private var skbStyleMode: SkbStyleMode = SkbStyleMode.Yuyan
     fun clearKeyboardMap() {
         mSoftKeyboardMap.clear()
     }
 
     private fun loadBaseSkb(skbValue: Int): SoftKeyboard {
+        skbStyleMode = ThemeManager.prefs.skbStyleMode.getValue()
         mSkbValue = skbValue
         // shift键状态
         // 直输状态
@@ -62,7 +57,7 @@ class KeyboardLoaderUtil private constructor() {
             rows.add(qwertyKeys.asList())
         }
         when(skbValue){
-            0x1000 -> {  // 1000  拼音全键
+            InputModeSwitcherManager.MASK_SKB_LAYOUT_QWERTY_PINYIN -> {  // 1000  拼音全键
                 rimeValue = AppPrefs.getInstance().internal.pinyinModeRime.getValue()
                 var keyBeans = mutableListOf<SoftKey>()
                 val keys = when (rimeValue) {
@@ -72,10 +67,9 @@ class KeyboardLoaderUtil private constructor() {
                         arrayOf(45, 51, 33, 46, 48, 53, 49, 37, 43, 44),
                         arrayOf(29, 47, 32, 34, 35, 36, 38, 39, 40),
                         arrayOf(74, 54, 52, 31, 50, 30, 42, 41, KeyEvent.KEYCODE_DEL),)
-                    else -> arrayListOf(
-                        arrayOf(45, 51, 33, 46, 48, 53, 49, 37, 43, 44),
-                        arrayOf(29, 47, 32, 34, 35, 36, 38, 39, 40),
-                        arrayOf(75, 54, 52, 31, 50, 30, 42, 41, KeyEvent.KEYCODE_DEL),)
+                    else -> {
+                        KeyboardData.layoutQwertyCn[skbStyleMode]!!
+                    }
                 }
                 var qwertyKeys = createQwertyPYKeys(keys[0])
                 keyBeans.addAll(qwertyKeys)
@@ -100,13 +94,9 @@ class KeyboardLoaderUtil private constructor() {
                 keyBeans = lastRows(skbValue)
                 rows.add(keyBeans)
             }
-            0x2000 -> {  // 2000  T9键键
+            InputModeSwitcherManager.MASK_SKB_LAYOUT_T9_PINYIN -> {  // 2000  T9键键
                 var keyBeans: MutableList<SoftKey> = LinkedList()
-                val keyDeleteOrder = if(ThemeManager.prefs.deleteLocationTop.getValue())Pair(KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_AT) else Pair(KeyEvent.KEYCODE_AT, KeyEvent.KEYCODE_DEL)
-                val keys = arrayListOf(
-                    arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_SYMBOL_12, 75, 9, 10, keyDeleteOrder.first),
-                    arrayOf(11, 12, 13, KeyEvent.KEYCODE_CLEAR),
-                    arrayOf(14, 15, 16, keyDeleteOrder.second),)
+                val keys = KeyboardData.layoutT9Cn[skbStyleMode]!!
                 var t9Key = createT9Keys(keys[0])
                 t9Key.first().apply {
                     widthF = 0.18f
@@ -124,33 +114,35 @@ class KeyboardLoaderUtil private constructor() {
                 keyBeans = LinkedList()
                 t9Key = createT9Keys(keys[2])
                 t9Key.first().mLeftF = 0.185f
-                t9Key.last().widthF = 0.18f
+                t9Key.last().apply {
+                    widthF = 0.18f
+                    stateId = 7
+                }
                 keyBeans.addAll(t9Key)
                 rows.add(keyBeans)
                 keyBeans = lastRows(skbValue)
                 rows.add(keyBeans)
+
             }
-            0x3000 -> {// 3000 手写键盘
+            InputModeSwitcherManager.MASK_SKB_LAYOUT_HANDWRITING -> {// 3000 手写键盘
                 var keyBeans: MutableList<SoftKey> = LinkedList()
-                var handwritingKey = createHandwritingKey(InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_SYMBOL_12) // 符号站位
+                val keys = KeyboardData.layoutHandwritingCn[skbStyleMode]!!
+                var handwritingKey = createHandwritingKey(keys[0][0]) // 符号站位
                 handwritingKey.mLeftF = 0.815f
                 handwritingKey.heightF = 0.50f
                 keyBeans.add(handwritingKey)
                 rows.add(keyBeans)
                 keyBeans = LinkedList()
-                handwritingKey = createHandwritingKey(KeyEvent.KEYCODE_DEL)
+                handwritingKey = createHandwritingKey(keys[1][0])
                 handwritingKey.mLeftF = 0.815f
                 keyBeans.add(handwritingKey)
                 rows.add(keyBeans)
                 keyBeans = lastRows(skbValue)
                 rows.add(keyBeans)
             }
-            0x4000 -> {// 4000 英文全键
+            InputModeSwitcherManager.MASK_SKB_LAYOUT_QWERTY_ABC -> {// 4000 英文全键
                 var keyBeans: MutableList<SoftKey> = LinkedList()
-                val keys = arrayListOf(
-                    arrayOf(45, 51, 33, 46, 48, 53, 49, 37, 43, 44),
-                    arrayOf(29, 47, 32, 34, 35, 36, 38, 39, 40),
-                    arrayOf(54, 52, 31, 50, 30, 42, 41, KeyEvent.KEYCODE_DEL),)
+                val keys = KeyboardData.layoutQwertyEn[skbStyleMode]!!
                 var qwertyKeys = createQwertyKeys(keys[0])
                 keyBeans.addAll(qwertyKeys)
                 rows.add(keyBeans)
@@ -162,7 +154,7 @@ class KeyboardLoaderUtil private constructor() {
                 keyBeans.addAll(qwertyKeys)
                 rows.add(keyBeans)
                 keyBeans = LinkedList()
-                val softKeyToggle = createKeyToggle(-1)
+                val softKeyToggle = createKeyToggle(InputModeSwitcherManager.USER_DEF_KEYCODE_SHIFT_1)
                 softKeyToggle.widthF = 0.147f
                 softKeyToggle.setToggleStates(shiftToggleStates)
                 keyBeans.add(softKeyToggle)
@@ -175,13 +167,9 @@ class KeyboardLoaderUtil private constructor() {
                 keyBeans[keyBeans.size -2].stateId = 1
                 rows.add(keyBeans)
             }
-            0x5000 -> {  // 5000 数字键盘
+            InputModeSwitcherManager.MASK_SKB_LAYOUT_NUMBER -> {  // 5000 数字键盘
                 var keyBeans: MutableList<SoftKey> = LinkedList()
-                val keyDelete = if(ThemeManager.prefs.deleteLocationTop.getValue())Pair(KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_AT) else Pair(KeyEvent.KEYCODE_AT, KeyEvent.KEYCODE_DEL)
-                val keys = arrayListOf(
-                    arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_SYMBOL_12, 8, 9, 10, keyDelete.first),
-                    arrayOf(11, 12, 13, InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_PERIOD_14),
-                    arrayOf(14, 15, 16, keyDelete.second),)
+                val keys =  KeyboardData.layoutT9Number[skbStyleMode]!!
                 var t9Keys = createT9NumberKeys(keys[0])
                 t9Keys.first().apply {
                     widthF = 0.18f
@@ -207,33 +195,50 @@ class KeyboardLoaderUtil private constructor() {
                 keyBeans = lastRows(skbValue)
                 rows.add(keyBeans)
             }
-            0x6000 -> {     // 6000 乱序17键盘
+            InputModeSwitcherManager.MASK_SKB_LAYOUT_LX17 -> {     // 6000 乱序17键盘
                 var keyBeans: MutableList<SoftKey> = LinkedList()
-                val keys = arrayListOf(
-                    arrayOf(36, 47, 54, 30, 52, 41),
-                    arrayOf(40, 32, 53, 51, 38, 42),
-                    arrayOf(31, 45, 35, 34, 48, 67),)
-                var lX17Keys = createLX17Keys(keys[0])
-                keyBeans.addAll(lX17Keys)
-                rows.add(keyBeans)
-                keyBeans = LinkedList()
-                lX17Keys = createLX17Keys(keys[1])
-                keyBeans.addAll(lX17Keys)
-                rows.add(keyBeans)
-                keyBeans = LinkedList()
-                lX17Keys = createLX17Keys(keys[2])
-                keyBeans.addAll(lX17Keys)
-                rows.add(keyBeans)
-                keyBeans = lastRows(skbValue)
-                rows.add(keyBeans)
+                if(AppPrefs.getInstance().keyboardSetting.lx17WithLeftPrefix.getValue()) {
+                    val keys = KeyboardData.layoutLX17CnWithLeftPrefix[skbStyleMode]!!
+                    var lX17Keys = createLX17Keys(keys[0])
+                    lX17Keys.first().apply {
+                        widthF = 0.1457f
+                        heightF = 0.75f
+                    }
+                    lX17Keys[1].mLeftF = 0.1457f
+                    keyBeans.addAll(lX17Keys)
+                    rows.add(keyBeans)
+                    keyBeans = LinkedList()
+                    lX17Keys = createLX17Keys(keys[1])
+                    lX17Keys.first().mLeftF = 0.1457f
+                    keyBeans.addAll(lX17Keys)
+                    rows.add(keyBeans)
+                    keyBeans = LinkedList()
+                    lX17Keys = createLX17Keys(keys[2])
+                    lX17Keys.first().mLeftF = 0.1457f
+                    keyBeans.addAll(lX17Keys)
+                    rows.add(keyBeans)
+                    keyBeans = lastRows(skbValue)
+                    rows.add(keyBeans)
+                } else {
+                    val keys =  KeyboardData.layoutLX17Cn[skbStyleMode]!!
+                    var lX17Keys = createLX17Keys(keys[0], 0.165f)
+                    keyBeans.addAll(lX17Keys)
+                    rows.add(keyBeans)
+                    keyBeans = LinkedList()
+                    lX17Keys = createLX17Keys(keys[1], 0.165f)
+                    keyBeans.addAll(lX17Keys)
+                    rows.add(keyBeans)
+                    keyBeans = LinkedList()
+                    lX17Keys = createLX17Keys(keys[2], 0.165f)
+                    keyBeans.addAll(lX17Keys)
+                    rows.add(keyBeans)
+                    keyBeans = lastRows(skbValue)
+                    rows.add(keyBeans)
+                }
             }
-            0x7000 -> {  // 7000  笔画键盘
+            InputModeSwitcherManager.MASK_SKB_LAYOUT_STROKE -> {  // 7000  笔画键盘
                 var keyBeans: MutableList<SoftKey> = LinkedList()
-                val keyDeleteOrder = if(ThemeManager.prefs.deleteLocationTop.getValue())Pair(KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_AT) else Pair(KeyEvent.KEYCODE_AT, KeyEvent.KEYCODE_DEL)
-                val keys = arrayListOf(
-                    arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_SYMBOL_12, 36, 47, 44, keyDeleteOrder.first),
-                    arrayOf(42, 54, InputModeSwitcherManager.USER_DEF_KEYCODE_STAR_17, KeyEvent.KEYCODE_CLEAR),
-                    arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_COMMA_13, 75, InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_PERIOD_14, keyDeleteOrder.second),)
+                val keys =  KeyboardData.layoutStrokeCn[skbStyleMode]!!
                 var t9Key = createT9Keys(keys[0])
                 t9Key.first().apply {
                     widthF = 0.18f
@@ -257,13 +262,9 @@ class KeyboardLoaderUtil private constructor() {
                 keyBeans = lastRows(skbValue)
                 rows.add(keyBeans)
             }
-            0x8000 -> {     // 6000 文本编辑键盘
+            InputModeSwitcherManager.MASK_SKB_LAYOUT_TEXTEDIT -> {     // 8000 文本编辑键盘
                 var keyBeans: MutableList<SoftKey> = LinkedList()
-                val keys = arrayListOf(
-                    arrayOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_RIGHT, InputModeSwitcherManager.USER_DEF_KEYCODE_SELECT_ALL),
-                    arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_SELECT_MODE, InputModeSwitcherManager.USER_DEF_KEYCODE_COPY),
-                    arrayOf(KeyEvent.KEYCODE_DPAD_DOWN, InputModeSwitcherManager.USER_DEF_KEYCODE_PASTE),
-                    arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_MOVE_START, InputModeSwitcherManager.USER_DEF_KEYCODE_MOVE_END, KeyEvent.KEYCODE_DEL),)
+                val keys =  KeyboardData.layoutTextEdit[skbStyleMode]!!
                 var editKeys = createTextEditKeys(keys[0])
                 editKeys[0].heightF = 0.75f
                 editKeys[2].heightF = 0.75f
@@ -283,15 +284,19 @@ class KeyboardLoaderUtil private constructor() {
                 rows.add(keyBeans)
                 keyBeans = LinkedList()
                 editKeys = createTextEditKeys(keys[3])
-                editKeys[0].widthF = 0.375f
-                editKeys[1].widthF = 0.375f
+                editKeys[0].widthF = 0.33f
+                editKeys[1].widthF = 0.33f
+                editKeys[2].widthF = 0.33f
                 keyBeans.addAll(editKeys)
-                rows.add(keyBeans)
-                keyBeans = lastRows(skbValue)
                 rows.add(keyBeans)
             }
         }
-        softKeyboard = getSoftKeyboard(rows, numberLine)
+        val numberLineSkb = when(skbStyleMode){
+            SkbStyleMode.Yuyan -> numberLine
+            SkbStyleMode.Samsung -> numberLine
+            SkbStyleMode.Google -> numberLine
+        }
+        softKeyboard = getSoftKeyboard(rows, numberLineSkb)
         mSoftKeyboardMap[skbValue] = softKeyboard
         return softKeyboard
     }
@@ -306,34 +311,108 @@ class KeyboardLoaderUtil private constructor() {
         softKeyToggle.setToggleStates(enterToggleStates)
         val keyBeans = mutableListOf<SoftKey>()
         val t9Keys = when(skbValue){
-            0x2000, 0x3000, 0x7000  ->{
-                createT9Keys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_SYMBOL_3, InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5,
-                    KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2))
+            InputModeSwitcherManager.MASK_SKB_LAYOUT_T9_PINYIN, InputModeSwitcherManager.MASK_SKB_LAYOUT_HANDWRITING, InputModeSwitcherManager.MASK_SKB_LAYOUT_STROKE ->{
+                if(skbStyleMode == SkbStyleMode.Google){
+                    createT9Keys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5, InputModeSwitcherManager.USER_DEF_KEYCODE_EMOJI_8, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2,
+                        KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_PERIOD_14))
+                } else if(skbStyleMode == SkbStyleMode.Samsung){
+                    createT9Keys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_SYMBOL_3, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2,
+                        KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5))
+                } else {
+                    createT9Keys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_SYMBOL_3, InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5,
+                        KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2))
+                }
             }
-            0x4000 -> {
-                createQwertyKeys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_SYMBOL_3, InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5,
-                    InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_PERIOD_14, KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2))
+            InputModeSwitcherManager.MASK_SKB_LAYOUT_QWERTY_ABC -> {
+                if(skbStyleMode == SkbStyleMode.Google){
+                    createQwertyKeys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5, InputModeSwitcherManager.USER_DEF_KEYCODE_EMOJI_8, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2,
+                        KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_PERIOD_14))
+                } else if (skbStyleMode == SkbStyleMode.Samsung) {
+                    createQwertyKeys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_SYMBOL_3, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2,
+                        InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_COMMA_13, KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_PERIOD_14, InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5))
+                } else {
+                    createQwertyKeys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_SYMBOL_3, InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5,
+                        InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_PERIOD_14, KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2))
+                }
             }
-            0x5000 -> {
+            InputModeSwitcherManager.MASK_SKB_LAYOUT_NUMBER -> {
                 createT9NumberKeys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_SYMBOL_3, InputModeSwitcherManager.USER_DEF_KEYCODE_RETURN_6, 7, KeyEvent.KEYCODE_SPACE))
             }
-            0x6000 -> {
-                createLX17Keys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_SYMBOL_3, InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5,
-                    InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_COMMA_13, KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2))
+            InputModeSwitcherManager.MASK_SKB_LAYOUT_LX17 -> {
+                if(skbStyleMode == SkbStyleMode.Google){
+                    createT9Keys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5, InputModeSwitcherManager.USER_DEF_KEYCODE_EMOJI_8, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2,
+                        KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_PERIOD_14))
+                } else if (skbStyleMode == SkbStyleMode.Samsung) {
+                    createLX17Keys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_SYMBOL_3, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2,
+                        InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_COMMA_13, KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5))
+                } else {
+                    createLX17Keys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_SYMBOL_3, InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5,
+                        InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_COMMA_13, KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2))
+                }
             }
-            else -> {  //0x1000
-                createQwertyPYKeys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_SYMBOL_3, InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5,
-                    InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_COMMA_13, KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2))
+            else -> { //0x1000 InputModeSwitcherManager.MASK_SKB_LAYOUT_QWERTY_PINYIN
+                if(skbStyleMode == SkbStyleMode.Google){
+                    createQwertyPYKeys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5, InputModeSwitcherManager.USER_DEF_KEYCODE_EMOJI_8, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2,
+                        KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_PERIOD_14))
+                } else if (skbStyleMode == SkbStyleMode.Samsung) {
+                    createQwertyPYKeys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_SYMBOL_3, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2,
+                        InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_COMMA_13, KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_PERIOD_14, InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5))
+                } else {
+                    createQwertyPYKeys(arrayOf(InputModeSwitcherManager.USER_DEF_KEYCODE_SYMBOL_3, InputModeSwitcherManager.USER_DEF_KEYCODE_NUMBER_5,
+                        InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_COMMA_13, KeyEvent.KEYCODE_SPACE, InputModeSwitcherManager.USER_DEF_KEYCODE_LANG_2))
+                }
             }
         }
-        if(t9Keys.size == 5){
-            softKeyToggle.widthF = 0.147f
-            t9Keys[0].widthF = 0.147f;t9Keys[1].widthF = 0.099f
-            t9Keys[2].widthF = 0.099f;t9Keys[3].widthF = 0.396f
-            t9Keys[4].widthF = 0.099f
-        } else{
-            t9Keys[0].widthF = 0.18f;t9Keys[1].widthF = 0.147f
-            t9Keys[2].widthF = 0.336f;t9Keys[3].widthF = 0.147f
+        if (skbStyleMode == SkbStyleMode.Google) {
+            t9Keys[2].stateId = 2
+            when (t9Keys.size) {
+                6 -> {
+                    t9Keys[0].widthF = 0.185f;t9Keys[1].widthF = 0.1f
+                    t9Keys[2].widthF = 0.1f;t9Keys[3].widthF = 0.23f
+                    t9Keys[4].widthF = 0.1f;t9Keys[5].widthF = 0.1f
+                    softKeyToggle.widthF = 0.185f
+                }
+                5 -> {
+                    t9Keys[0].widthF = 0.185f;t9Keys[1].widthF = 0.1f
+                    t9Keys[2].widthF = 0.1f;t9Keys[3].widthF = 0.33f
+                    t9Keys[4].widthF = 0.1f;softKeyToggle.widthF = 0.185f
+                }
+                else -> {
+                    softKeyToggle.widthF = 0.18f
+                    t9Keys[0].widthF = 0.18f;t9Keys[1].widthF = 0.21f
+                    t9Keys[2].widthF = 0.21f;t9Keys[3].widthF = 0.21f
+                }
+            }
+        } else if (skbStyleMode == SkbStyleMode.Samsung) {
+            if(skbValue == 0x4000)t9Keys[1].stateId = 1
+            when (t9Keys.size) {
+                6 -> {
+                    t9Keys[0].widthF = 0.1457f;t9Keys[1].widthF = 0.1457f
+                    t9Keys[2].widthF = 0.099f;t9Keys[3].widthF = 0.2f
+                    t9Keys[4].widthF = 0.099f;t9Keys[5].widthF = 0.1457f
+                    softKeyToggle.widthF = 0.1457f
+                }
+                5 -> {
+                    t9Keys[0].widthF = 0.16f;t9Keys[1].widthF = 0.099f
+                    t9Keys[2].widthF = 0.099f;t9Keys[3].widthF = 0.38f
+                    t9Keys[4].widthF = 0.099f;softKeyToggle.widthF = 0.16f
+                }
+                else -> {
+                    softKeyToggle.widthF = 0.18f
+                    t9Keys[0].widthF = 0.18f;t9Keys[1].widthF = 0.21f
+                    t9Keys[2].widthF = 0.21f;t9Keys[3].widthF = 0.21f
+                }
+            }
+        } else {
+            if (t9Keys.size == 5) {
+                softKeyToggle.widthF = 0.147f
+                t9Keys[0].widthF = 0.147f;t9Keys[1].widthF = 0.099f
+                t9Keys[2].widthF = 0.099f;t9Keys[3].widthF = 0.396f
+                t9Keys[4].widthF = 0.099f
+            } else {
+                t9Keys[0].widthF = 0.18f;t9Keys[1].widthF = 0.147f
+                t9Keys[2].widthF = 0.336f;t9Keys[3].widthF = 0.147f
+            }
         }
         keyBeans.addAll(t9Keys)
         keyBeans.add(softKeyToggle)
@@ -387,9 +466,10 @@ class KeyboardLoaderUtil private constructor() {
 
     private fun createT9Keys(codes: Array<Int>): Array<SoftKey> {
         val softKeys = mutableListOf<SoftKey>()
+        val keyPreset =  if(mSkbValue == 0x7000) KeyPreset.strokeKeyPreset else KeyPreset.t9PYKeyPreset
         for(code in codes){
-            val labels = if(mSkbValue == 0x7000) strokeKeyPreset[code] else t9PYKeyPreset[code]
-            softKeys.add(SoftKey(code, labels?.getOrNull(0) ?: "", labels?.getOrNull(1)?: "").apply {
+            val labels = keyPreset[code]
+            softKeys.add(SoftKey(code = code, label = labels?.getOrNull(0) ?: "", labelSmall = labels?.getOrNull(1)?: "").apply {
                 widthF = 0.21f
             })
         }
@@ -398,9 +478,10 @@ class KeyboardLoaderUtil private constructor() {
 
     private fun createT9NumberKeys(codes: Array<Int>): Array<SoftKey> {
         val softKeys = mutableListOf<SoftKey>()
+        val keyPreset = KeyPreset.t9NumberKeyPreset
         for(code in codes){
-            val labels = t9NumberKeyPreset[code]
-            softKeys.add(SoftKey(code, labels?.getOrNull(0) ?: "", labels?.getOrNull(1) ?: "").apply {
+            val labels = keyPreset[code]
+            softKeys.add(SoftKey(code = code, label = labels?.getOrNull(0) ?: "", labelSmall = labels?.getOrNull(1) ?: "").apply {
                 widthF = 0.21f
             })
         }
@@ -418,10 +499,10 @@ class KeyboardLoaderUtil private constructor() {
             else -> emptyMap()
         }
         val softKeys = mutableListOf<SoftKey>()
-        val keyPreset = if(numberLine)qwertyPYKeyPreset else qwertyPYKeyNumberPreset
+        val keyPreset = if(numberLine)KeyPreset.qwertyPYKeyPreset else KeyPreset.qwertyPYKeyNumberPreset
         for(code in codes){
             val labels = keyPreset[code]
-            softKeys.add(SoftKey(code, labels?.getOrNull(0) ?: "", labels?.getOrNull(1) ?: "", keyMnemonicPreset[code] ?: "").apply {
+            softKeys.add(SoftKey(code = code, label = labels?.getOrNull(0) ?: "", labelSmall = labels?.getOrNull(1) ?: "", keyMnemonic = keyMnemonicPreset[code] ?: "").apply {
                 widthF = 0.099f
             })
         }
@@ -430,10 +511,10 @@ class KeyboardLoaderUtil private constructor() {
 
     private fun createQwertyKeys(codes: Array<Int>): Array<SoftKey> {
         val softKeys = mutableListOf<SoftKey>()
+        val keyPreset = if(numberLine)KeyPreset.qwertyKeyPreset else KeyPreset.qwertyKeyNumberPreset
         for(code in codes){
-            val keyPreset = if(numberLine)qwertyKeyPreset else qwertyKeyNumberPreset
             val labels = keyPreset[code]
-            softKeys.add(SoftKey(code, labels?.getOrNull(0) ?: "", labels?.getOrNull(1) ?: "", labels?.getOrNull(2) ?: "").apply {
+            softKeys.add(SoftKey(code = code, label = labels?.getOrNull(0) ?: "", labelSmall = labels?.getOrNull(1) ?: "", keyMnemonic = labels?.getOrNull(2) ?: "").apply {
                 widthF = 0.099f
             })
         }
@@ -441,9 +522,9 @@ class KeyboardLoaderUtil private constructor() {
     }
 
     private fun createHandwritingKey(code: Int): SoftKey {
-        val keyPreset = if(numberLine)qwertyPYKeyPreset else qwertyPYKeyNumberPreset
+        val keyPreset = if(numberLine)KeyPreset.qwertyPYKeyPreset else KeyPreset.qwertyPYKeyNumberPreset
         val labels = keyPreset[code]
-        return SoftKey(code, labels?.getOrNull(0) ?: "", labels?.getOrNull(1) ?: "").apply {
+        return SoftKey(code = code, label = labels?.getOrNull(0) ?: "", labelSmall = labels?.getOrNull(1) ?: "").apply {
             widthF = 0.18f
         }
     }
@@ -451,7 +532,7 @@ class KeyboardLoaderUtil private constructor() {
     private fun createNumberLineKeys(codes: Array<Int>): Array<SoftKey> {
         val softKeys = mutableListOf<SoftKey>()
         for(code in codes) {
-            val softKey = SoftKey(code.toString()).apply {
+            val softKey = SoftKey(label = code.toString()).apply {
                 widthF = 0.099f
                 heightF = 0.2f
             }
@@ -460,13 +541,13 @@ class KeyboardLoaderUtil private constructor() {
         return softKeys.toTypedArray()
     }
 
-    private fun createLX17Keys(codes: Array<Int>): Array<SoftKey> {
+    private fun createLX17Keys(codes: Array<Int>, width: Float = 0.142f): Array<SoftKey> {
         val softKeys = mutableListOf<SoftKey>()
-        val keyPreset = if(numberLine)lx17PYKeyPreset else lx17PYKeyNumberPreset
+        val keyPreset = if(numberLine)KeyPreset.lx17PYKeyPreset else KeyPreset.lx17PYKeyNumberPreset
         for(code in codes){
             val labels = keyPreset[code]
-            softKeys.add(SoftKey(code, labels?.getOrNull(0) ?: "", labels?.getOrNull(1) ?: "", lx17MnemonicPreset[code] ?: "").apply {
-                widthF = 0.165f
+            softKeys.add(SoftKey(code = code, label = labels?.getOrNull(0) ?: "", labelSmall = labels?.getOrNull(1) ?: "", keyMnemonic= lx17MnemonicPreset[code] ?: "").apply {
+                widthF = width
             })
         }
         return softKeys.toTypedArray()
@@ -474,11 +555,11 @@ class KeyboardLoaderUtil private constructor() {
 
     private fun createTextEditKeys(codes: Array<Int>): Array<SoftKey> {
         val softKeys = mutableListOf<SoftKey>()
-        val keyPreset = textEditKeyPreset
+        val keyPreset = KeyPreset.textEditKeyPreset
         for(code in codes){
             val labels = keyPreset[code]
-            softKeys.add(SoftKey(code, labels?.getOrNull(0) ?: "").apply {
-                widthF = 0.25f
+            softKeys.add(SoftKey(code = code, label = labels?.getOrNull(0) ?: "").apply {
+                widthF = 0.2475f
             })
         }
         return softKeys.toTypedArray()

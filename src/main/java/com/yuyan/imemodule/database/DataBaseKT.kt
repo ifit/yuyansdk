@@ -5,7 +5,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.yuyan.imemodule.application.ImeSdkApplication
+import com.yuyan.imemodule.application.Launcher
 import com.yuyan.imemodule.database.dao.ClipboardDao
 import com.yuyan.imemodule.database.dao.PhraseDao
 import com.yuyan.imemodule.database.dao.SideSymbolDao
@@ -20,7 +20,7 @@ import com.yuyan.imemodule.prefs.behavior.SkbMenuMode
 import com.yuyan.imemodule.utils.thread.ThreadPoolUtils
 
 //@Database(entities = [SideSymbol::class, Clipboard::class, UsedSymbol::class], version = 1, exportSchema = false)
-@Database(entities = [SideSymbol::class, Clipboard::class, UsedSymbol::class, Phrase::class, SkbFun::class], version = 3, exportSchema = false)
+@Database(entities = [SideSymbol::class, Clipboard::class, UsedSymbol::class, Phrase::class, SkbFun::class], version = 4, exportSchema = false)
 abstract class DataBaseKT : RoomDatabase() {
     abstract fun sideSymbolDao(): SideSymbolDao
     abstract fun clipboardDao(): ClipboardDao
@@ -48,7 +48,7 @@ abstract class DataBaseKT : RoomDatabase() {
             }
         }
 
-        val instance = Room.databaseBuilder(ImeSdkApplication.context, DataBaseKT::class.java, "ime_db")
+        val instance = Room.databaseBuilder(Launcher.instance.context, DataBaseKT::class.java, "ime_db")
             .allowMainThreadQueries()
             .addMigrations(MIGRATION_1_2)
             .addMigrations(MIGRATION_2_3)

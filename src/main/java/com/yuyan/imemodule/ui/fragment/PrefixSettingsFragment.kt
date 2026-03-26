@@ -3,21 +3,31 @@ package com.yuyan.imemodule.ui.fragment
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.yuyan.imemodule.R
 import com.yuyan.imemodule.adapter.PrefixSettingsAdapter
-import com.yuyan.imemodule.application.ImeSdkApplication
+import com.yuyan.imemodule.application.Launcher
+import com.yuyan.imemodule.data.theme.ThemeManager.activeTheme
 import com.yuyan.imemodule.database.DataBaseKT
 import com.yuyan.imemodule.database.entry.SideSymbol
 import com.yuyan.imemodule.utils.DevicesUtils
 import com.yuyan.imemodule.keyboard.KeyboardManager
-import com.yuyan.imemodule.view.widget.CustomLinearLayout
+import com.yuyan.imemodule.libs.recyclerview.SwipeMenu
+import com.yuyan.imemodule.libs.recyclerview.SwipeMenuBridge
+import com.yuyan.imemodule.libs.recyclerview.SwipeMenuItem
+import com.yuyan.imemodule.libs.recyclerview.SwipeRecyclerView
+import com.yuyan.imemodule.libs.recyclerview.touch.OnItemMoveListener
 import splitties.dimensions.dp
 import splitties.views.dsl.core.add
 import splitties.views.dsl.core.lParams
@@ -29,21 +39,46 @@ import java.util.Collections
 class PrefixSettingsFragment(type:String) : Fragment(){
     private var  mType = "pinyin"
     private var  datas:MutableList<SideSymbol>
+    private var mAdapter:PrefixSettingsAdapter
     init {
         mType = type
         datas = if(type == "pinyin")DataBaseKT.instance.sideSymbolDao().getAllSideSymbolPinyin().toMutableList() else DataBaseKT.instance.sideSymbolDao().getAllSideSymbolNumber().toMutableList()
+        mAdapter = PrefixSettingsAdapter(datas, mType)
     }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        val menuProvider = object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.add_prefix_menu, menu)
+            }
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                return when (menuItem.itemId) {
+                    R.id.add_prefix_menu -> {
+                        datas.add(SideSymbol("", "", type = mType))
+                        mAdapter.notifyItemInserted(mAdapter.itemCount)
+                        true
+                    }
+                    else -> false
+                }
+            }
+        }
+        requireActivity().addMenuProvider(menuProvider, viewLifecycleOwner, Lifecycle.State.RESUMED)
+    }
+
     override fun onResume() {
         super.onResume()
         (activity as AppCompatActivity).supportActionBar?.setTitle(R.string.setting_ime_prefixs)
     }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View = with(requireContext()) {
-        val header = LinearLayout(ImeSdkApplication.context).apply {
+        val header = LinearLayout(Launcher.instance.context).apply {
             gravity = Gravity.CENTER_VERTICAL
             add(textView {
                 gravity = Gravity.CENTER
                 background = null
                 text = context.getString(R.string.skb_prefix_show_tips)
+                setTextColor(activeTheme.keyTextColor)
             }, lParams(width = 0, weight = 1f){
                 setMargins(dp(20), 0, dp(20), 0)
             })
@@ -52,34 +87,33 @@ class PrefixSettingsFragment(type:String) : Fragment(){
                 gravity = Gravity.CENTER
                 background = null
                 text = context.getString(R.string.skb_prefix_commit_tips)
+                setTextColor(activeTheme.keyTextColor)
             }, lParams(width = 0, weight = 2f))
 
             add(textView {
                 gravity = Gravity.CENTER
                 background = null
                 text = context.getString(R.string.skb_prefix_sort_tips)
+                setTextColor(activeTheme.keyTextColor)
             }, lParams(width = 0, weight = 1f))
         }
 
-        val adapter = PrefixSettingsAdapter(datas, mType)
-        val mItemMoveListener: com.yuyan.imemodule.libs.recyclerview.touch.OnItemMoveListener = object :
-            com.yuyan.imemodule.libs.recyclerview.touch.OnItemMoveListener {
+        val mItemMoveListener: OnItemMoveListener = object :
+            OnItemMoveListener {
             override fun onItemMove(srcHolder: RecyclerView.ViewHolder, targetHolder: RecyclerView.ViewHolder): Boolean {
                 val fromPosition = srcHolder.bindingAdapterPosition
                 val toPosition = targetHolder.bindingAdapterPosition
                 if(fromPosition < 0 || fromPosition >= datas.size) return false
                 if(toPosition < 0 || toPosition >= datas.size) return false
                 Collections.swap(datas, fromPosition, toPosition)
-                adapter.notifyItemMoved(fromPosition, toPosition)
+                mAdapter.notifyItemMoved(fromPosition, toPosition)
                 return true
             }
             override fun onItemDismiss(srcHolder: RecyclerView.ViewHolder?) {
             }
         }
 
-        val mRVSymbolsView = com.yuyan.imemodule.libs.recyclerview.SwipeRecyclerView(
-            context
-        ).apply {
+        val mRVSymbolsView = SwipeRecyclerView(context).apply {
             layoutManager = LinearLayoutManager(context)
             setLongPressDragEnabled(true)
             setOnItemLongClickListener{ _, _ ->
@@ -87,23 +121,21 @@ class PrefixSettingsFragment(type:String) : Fragment(){
             }
             setOnItemMoveListener(mItemMoveListener)
         }
-        mRVSymbolsView.setSwipeMenuCreator{ _: com.yuyan.imemodule.libs.recyclerview.SwipeMenu, rightMenu: com.yuyan.imemodule.libs.recyclerview.SwipeMenu, _: Int ->
-            val deleteItem = com.yuyan.imemodule.libs.recyclerview.SwipeMenuItem(
-                context
-            ).apply {
+        mRVSymbolsView.setSwipeMenuCreator{ _: SwipeMenu, rightMenu: SwipeMenu, _: Int ->
+            val deleteItem = SwipeMenuItem(context).apply {
                 setImage(R.drawable.ic_menu_delete)
             }
             rightMenu.addMenuItem(deleteItem)
         }
-        mRVSymbolsView.setOnItemMenuClickListener { menuBridge: com.yuyan.imemodule.libs.recyclerview.SwipeMenuBridge, position: Int ->
+        mRVSymbolsView.setOnItemMenuClickListener { menuBridge: SwipeMenuBridge, position: Int ->
             menuBridge.closeMenu()
-            if(menuBridge.position == 0) {
+            if(menuBridge.position == 0 && position < datas.size) {
                 datas.removeAt(position)
-                adapter.notifyItemRemoved(position)
+                mAdapter.notifyItemRemoved(position)
             }
         }
-        mRVSymbolsView.setAdapter(adapter)
-        CustomLinearLayout(context).apply {
+        mRVSymbolsView.setAdapter(mAdapter)
+        LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             fitsSystemWindows = true
             add(header, lParams(width = matchParent, height = wrapContent) {

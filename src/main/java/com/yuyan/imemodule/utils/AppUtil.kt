@@ -12,7 +12,7 @@ import androidx.annotation.IdRes
 import androidx.core.app.NotificationCompat
 import androidx.navigation.NavDeepLinkBuilder
 import com.yuyan.imemodule.R
-import com.yuyan.imemodule.application.ImeSdkApplication
+import com.yuyan.imemodule.application.Launcher
 import com.yuyan.imemodule.ui.activity.SettingsActivity
 import kotlin.system.exitProcess
 
@@ -20,7 +20,7 @@ object AppUtil {
 
     fun launchSettings(context: Context) {
         context.startActivity<SettingsActivity> {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         }
     }
 
@@ -53,7 +53,7 @@ object AppUtil {
         launchMainToDest(context, R.id.sidebarSymbolFragment, arguments)
 
     fun launchMarketforYuyan(context: Context){
-        val packageName = ImeSdkApplication.context.packageName
+        val packageName = Launcher.instance.context.packageName
         try {
             val uri = Uri.parse("market://details?id=$packageName")
             val intent = Intent(Intent.ACTION_VIEW, uri)

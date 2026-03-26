@@ -6,9 +6,10 @@ import android.graphics.Rect
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
 import android.os.Parcelable
 import androidx.core.content.ContextCompat
-import com.yuyan.imemodule.application.ImeSdkApplication
+import com.yuyan.imemodule.application.Launcher
 import com.yuyan.imemodule.utils.DarkenColorFilter
 import com.yuyan.imemodule.utils.RectSerializer
 import kotlinx.parcelize.Parcelize
@@ -41,9 +42,20 @@ sealed class Theme : Parcelable {
 
     open fun backgroundDrawable(keyBorder: Boolean = false): Drawable {
         return if(keyboardResources != 0){
-            ContextCompat.getDrawable(ImeSdkApplication.context, keyboardResources)!!
+            ContextCompat.getDrawable(Launcher.instance.context, keyboardResources)!!
         } else {
             ColorDrawable(keyboardColor)
+        }
+    }
+
+    open fun backgroundGradientDrawable(keyBorder: Boolean = false): Drawable {
+        return GradientDrawable().apply {
+            setColor(if (keyBorder) backgroundColor else keyboardColor)
+            setShape(GradientDrawable.RECTANGLE)
+            setCornerRadius(20f) // 设置圆角半径
+            if(ThemeManager.prefs.keyboardModeFloat.getValue()){
+                setStroke(2, dividerColor)
+            }
         }
     }
 
@@ -80,7 +92,7 @@ sealed class Theme : Parcelable {
                 val cropped = File(croppedFilePath)
                 if (!cropped.exists()) return null
                 val bitmap = BitmapFactory.decodeStream(cropped.inputStream()) ?: return null
-                return BitmapDrawable(ImeSdkApplication.context.resources, bitmap).apply {
+                return BitmapDrawable(Launcher.instance.context.resources, bitmap).apply {
                     colorFilter = DarkenColorFilter(100 - brightness)
                 }
             }

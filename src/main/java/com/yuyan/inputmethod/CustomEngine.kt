@@ -4,6 +4,7 @@ import com.yuyan.imemodule.database.DataBaseKT
 import com.yuyan.imemodule.utils.StringUtils
 import com.yuyan.imemodule.utils.TimeUtils
 import com.yuyan.imemodule.libs.expression.ExpressionBuilder
+import com.yuyan.imemodule.prefs.AppPrefs.Companion.getInstance
 
 object CustomEngine {
     fun parseExpressionAtEnd(input: String): String? {
@@ -50,14 +51,17 @@ object CustomEngine {
 
     fun processPhrase(text: String):MutableList<String> {
         val phrases = mutableListOf<String>()
-        phrases.addAll(DataBaseKT.instance.phraseDao().query(text).map { it.content })
-        val suffixesDate = setOf("rq", "riqi", "7474", "77")
-        if(suffixesDate.any { it == text }){
-            phrases.addAll(TimeUtils.getData())
-        }
-        val suffixesTime = setOf("sj", "shijian", "75", "7445426")
-        if(suffixesTime.any { it == text }){
-            phrases.addAll(TimeUtils.getTime())
+        val chinesePredictionDate = getInstance().input.chinesePredictionDate.getValue()
+        if(chinesePredictionDate) {
+            phrases.addAll(DataBaseKT.instance.phraseDao().query(text).map { it.content })
+            val suffixesDate = setOf("rq", "riqi", "7474", "77")
+            if (suffixesDate.any { it == text }) {
+                phrases.addAll(TimeUtils.getData())
+            }
+            val suffixesTime = setOf("sj", "shijian", "75", "7445426")
+            if (suffixesTime.any { it == text }) {
+                phrases.addAll(TimeUtils.getTime())
+            }
         }
         return phrases
     }

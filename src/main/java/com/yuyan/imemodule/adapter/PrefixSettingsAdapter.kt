@@ -9,7 +9,8 @@ import android.widget.LinearLayout
 import androidx.core.widget.doOnTextChanged
 import androidx.recyclerview.widget.RecyclerView
 import com.yuyan.imemodule.R
-import com.yuyan.imemodule.application.ImeSdkApplication.Companion.context
+import com.yuyan.imemodule.application.Launcher
+import com.yuyan.imemodule.data.theme.ThemeManager.activeTheme
 import com.yuyan.imemodule.database.entry.SideSymbol
 import splitties.dimensions.dp
 import splitties.views.dsl.core.add
@@ -24,21 +25,24 @@ class PrefixSettingsAdapter ( private val mDatas: MutableList<SideSymbol>, type:
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PrefixSettingsHolder {
-        val content = LinearLayout(context).apply {
+        val content = LinearLayout(Launcher.instance.context).apply {
             setPadding(0, dp(5), 0, dp(5))
             add(editText {
                 gravity = Gravity.CENTER
+                setTextColor(activeTheme.keyTextColor)
                 id = R.id.et_prefix_setting_key
             }, lParams(width = 0, weight = 1f, height = matchParent){
                 setMargins(dp(20), 0, dp(20), 0)
             })
             add(editText {
                 gravity = Gravity.CENTER
+                setTextColor(activeTheme.keyTextColor)
                 id = R.id.et_prefix_setting_value
             }, lParams(width = 0, weight = 2f))
 
             add(ImageView(context).apply {
                 setImageResource(R.drawable.ic_menu_menu)
+                drawable.setTint(activeTheme.keyTextColor)
             }, lParams(width = 0, weight = 1f, gravity = Gravity.CENTER))
         }
         return PrefixSettingsHolder(content)
@@ -55,15 +59,6 @@ class PrefixSettingsAdapter ( private val mDatas: MutableList<SideSymbol>, type:
             if(bindPos < mDatas.size) {
                 val data = mDatas[bindPos]
                 data.symbolKey = key
-                if(data.symbolKey == "" && data.symbolValue == ""){
-                    mDatas.removeAt(bindPos)
-                    notifyItemRemoved(bindPos)
-                }
-            }
-            else {
-                mDatas.add(SideSymbol(symbolKey = key, symbolValue = key, type = mType))
-                holder.etPrefixValue.setText(key)
-                notifyDataSetChanged()
             }
         }
         holder.etPrefixValue.doOnTextChanged { s, _, _, _ ->
@@ -72,21 +67,12 @@ class PrefixSettingsAdapter ( private val mDatas: MutableList<SideSymbol>, type:
             if(bindPos < mDatas.size) {
                 val data = mDatas[bindPos]
                 data.symbolValue = value
-                if(data.symbolKey == "" && data.symbolValue == ""){
-                    mDatas.removeAt(bindPos)
-                    notifyItemRemoved(bindPos)
-                }
-            }
-            else {
-                mDatas.add(SideSymbol(symbolKey = value, symbolValue = value, type = mType))
-                holder.etPrefixKey.setText(value)
-                notifyDataSetChanged()
             }
         }
     }
 
     override fun getItemCount(): Int {
-        return mDatas.size + 1
+        return mDatas.size
     }
 
     inner class PrefixSettingsHolder(view: View) : RecyclerView.ViewHolder(view) {

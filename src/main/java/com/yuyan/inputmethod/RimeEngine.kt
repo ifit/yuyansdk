@@ -2,14 +2,18 @@ package com.yuyan.inputmethod
 
 import android.view.KeyEvent
 import com.yuyan.imemodule.application.CustomConstant
+import com.yuyan.imemodule.application.Launcher
 import com.yuyan.imemodule.manager.InputModeSwitcherManager
 import com.yuyan.imemodule.prefs.AppPrefs
 import com.yuyan.imemodule.utils.StringUtils
 import com.yuyan.inputmethod.core.CandidateListItem
 import com.yuyan.inputmethod.core.Rime
+import com.yuyan.inputmethod.data.InputKey
+import com.yuyan.inputmethod.data.KeyRecordStack
 import com.yuyan.inputmethod.util.DoublePinYinUtils
+import com.yuyan.inputmethod.util.LX17PinYinUtils
+import com.yuyan.inputmethod.util.QwertyPinYinUtils
 import com.yuyan.inputmethod.util.T9PinYinUtils
-import com.yuyan.inputmethod.util.buildSpannedString
 import java.util.Locale
 
 object RimeEngine {
@@ -25,10 +29,12 @@ object RimeEngine {
 
     fun selectSchema(mod: String): Boolean {
         keyRecordStack.clear()
-        val shareDir = CustomConstant.RIME_DICT_PATH
-        val userDir = CustomConstant.RIME_DICT_PATH
-        Rime.startupRime(shareDir, userDir, true)
+        Rime.startup(Launcher.instance.context, false)
         return Rime.selectSchema(mod)
+    }
+
+    fun getCurrentRimeSchema(): String {
+        return Rime.getCurrentRimeSchema()
     }
 
     /**
@@ -40,11 +46,9 @@ object RimeEngine {
 
     fun onNormalKey(event: KeyEvent) {
         val keyCode = event.keyCode
-        val keyChar = when (keyCode) {
-            KeyEvent.KEYCODE_APOSTROPHE -> if(isFinish()) '/'.code else '\''.code
-            else -> event.unicodeChar
-        }
-        if (keyRecordStack.pushKey(keyCode))Rime.processKey(keyChar, event.action)
+        val keyChar = if(keyCode == KeyEvent.KEYCODE_APOSTROPHE) if(isFinish()) '/'.code else '\''.code
+            else event.unicodeChar
+        if (keyRecordStack.pushKey(event))Rime.processKey(keyChar, event.action)
         updateCandidatesOrCommitText()
     }
 
@@ -83,7 +87,7 @@ object RimeEngine {
 
     fun selectPinyin(index: Int) {
         val pinyinKey = keyRecordStack.pushPinyinSelectAction(pinyins[index]) ?: return
-        Rime.replaceKey(pinyinKey.posInInput, pinyinKey.pinyinLength, pinyinKey.inputKeys())
+        Rime.replaceKey(pinyinKey.posInInput, pinyinKey.t9Keys().length, pinyinKey.pinyin())
         updateCandidatesOrCommitText()
     }
 
@@ -116,7 +120,7 @@ object RimeEngine {
 
     fun destroy() = Rime.destroy()
 
-    private fun processDelAction() {
+    fun processDelAction() {
         when (val lastKey = keyRecordStack.pop()) {
             is InputKey.PinyinKey -> {
                 val pinyinKey = keyRecordStack.restorePinyinToT9Key(lastKey) ?: return
@@ -153,12 +157,14 @@ object RimeEngine {
         if (rimeCommit != null) {
             keyRecordStack.clear()
             preCommitText = rimeCommit.commitText
-            preCommitText = if (InputModeSwitcherManager.isEnglishUpperCase) {
-                preCommitText.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-            } else if (InputModeSwitcherManager.isEnglishUpperLockCase) {
-                preCommitText.uppercase()
-            } else {
-                preCommitText.lowercase()
+            if(Rime.getCurrentRimeSchema() == CustomConstant.SCHEMA_EN) {
+                preCommitText = if (InputModeSwitcherManager.isEnglishUpperCase) {
+                    preCommitText.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+                } else if (InputModeSwitcherManager.isEnglishUpperLockCase) {
+                    preCommitText.uppercase()
+                } else {
+                    preCommitText.lowercase()
+                }
             }
             showComposition = ""
             showCandidates = emptyList()
@@ -180,33 +186,32 @@ object RimeEngine {
             else -> candidates
         }
         var composition = getCurrentComposition(candidates)
-        if (InputModeSwitcherManager.isEnglishUpperCase) {
-            for (item in showCandidates) item.text = item.text.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-            composition = composition.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-        } else if (InputModeSwitcherManager.isEnglishUpperLockCase) {
-            for (item in showCandidates) item.text = item.text.uppercase()
-            composition = composition.uppercase()
-        } else {
-            for (item in showCandidates) item.text = item.text.lowercase()
-            composition = composition.lowercase()
-        }
-        var count = compositionText.count { it in '1'..'9' }
-        pinyins =
-            if (count > 0) {
-                val remainT9Keys = ArrayList<InputKey>(count)
-                keyRecordStack.forEachReversed { inputKey ->
-                    if (inputKey is InputKey.T9Key) {
-                        inputKey.consumed = count-- <= 0
-                        if (!inputKey.consumed) {
-                            remainT9Keys.add(inputKey)
-                        }
-                    }
-                }
-                val t9Input = remainT9Keys.joinToString("").reversed()
-                T9PinYinUtils.t9KeyToPinyin(t9Input)
+        if(Rime.getCurrentRimeSchema() == CustomConstant.SCHEMA_EN) {
+            if (InputModeSwitcherManager.isEnglishUpperCase) {
+                for (item in showCandidates) item.text = item.text.lowercase()
+                    .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+                composition = composition.lowercase()
+                    .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+            } else if (InputModeSwitcherManager.isEnglishUpperLockCase) {
+                for (item in showCandidates) item.text = item.text.uppercase()
+                composition = composition.uppercase()
             } else {
+                for (item in showCandidates) item.text = item.text.lowercase()
+                composition = composition.lowercase()
+            }
+        }
+        val rimeSchema = Rime.getCurrentRimeSchema()
+        pinyins = when (rimeSchema) {
+            CustomConstant.SCHEMA_ZH_T9 -> {
+                T9PinYinUtils.t9KeyToPinyin(compositionText.filter { it.isUpperCase() })
+            }
+            CustomConstant.SCHEMA_ZH_DOUBLE_LX17 -> {
+                LX17PinYinUtils.lx17KeyToPinyin(compositionText.filter { it.isUpperCase() })
+            }
+            else -> {
                 emptyArray()
             }
+        }
         showComposition = composition
         preCommitText = ""
         return null
@@ -216,67 +221,30 @@ object RimeEngine {
      * 拿到候选词拼音组合
      */
     fun getPrefixs(): Array<String> {
-        var count = Rime.compositionText.count { it in '1'..'9' }
-        val pyCandidates =
-            if (count > 0) {
-                val remainT9Keys = ArrayList<InputKey>(count)
-                keyRecordStack.forEachReversed { inputKey ->
-                    if (inputKey is InputKey.T9Key) {
-                        inputKey.consumed = count-- <= 0
-                        if (!inputKey.consumed) {
-                            remainT9Keys.add(inputKey)
-                        }
-                    }
-                }
-                val t9Input = remainT9Keys.joinToString("").reversed()
-                T9PinYinUtils.t9KeyToPinyin(t9Input)
-            } else {
-                emptyArray()
-            }
-        return pyCandidates
+        return pinyins
     }
 
     private fun getCurrentComposition(candidates: List<CandidateListItem>): String {
         val composition = Rime.compositionText
-        if(Rime.getCurrentRimeSchema() == CustomConstant.SCHEMA_EN) return ""
+        val rimeSchema = Rime.getCurrentRimeSchema()
+        if(rimeSchema == CustomConstant.SCHEMA_EN) return ""
         if(composition.isEmpty()) return ""
         if(candidates.isEmpty()) return composition
         val comment = candidates.first().comment
-        return when {
-            comment.isBlank() || comment.contains("☯") || comment.startsWith("~")-> composition
-            Rime.getCurrentRimeSchema().startsWith(CustomConstant.SCHEMA_ZH_DOUBLE_FLYPY) ->  {
+        val result =  when {
+            comment.isNotBlank() && comment.startsWith("~") -> composition
+            rimeSchema == CustomConstant.SCHEMA_ZH_T9 -> {
+                T9PinYinUtils.getT9Composition(composition, comment)
+            }
+            rimeSchema.startsWith(CustomConstant.SCHEMA_ZH_DOUBLE_FLYPY) -> {
                 if(!AppPrefs.getInstance().keyboardSetting.keyboardDoubleInputKey.getValue()) composition
-                else {
-                    val compositionList = composition.filter { it.code <= 0xFF }.split("'".toRegex())
-                    buildSpannedString {
-                        append(composition.filter { it.code > 0xFF })
-                        comment.split("'").zip(compositionList).forEach { (pinyin, composition) ->
-                            append(if (composition.length >= 2) pinyin else {
-                                 when(Rime.getCurrentRimeSchema()){
-                                    "double_pinyin_abc" ->DoublePinYinUtils.double_pinyin_abc
-                                    "double_pinyin_ziguang" ->DoublePinYinUtils.double_pinyin_ziguang
-                                    "double_pinyin_ls17" ->DoublePinYinUtils.double_pinyin_ls17
-                                    else ->DoublePinYinUtils.double_pinyin
-                                }.getOrElse(composition[0]){pinyin.first().toString()}
-                            })
-                            append("'")
-                        }
-                        if (!composition.endsWith("'")) delete(length - 1, length)
-                    }
-                }
+                else DoublePinYinUtils.getDoublePinYinComposition(rimeSchema, composition, comment)
             }
             else -> {
-                val compositionList = composition.filter { it.code <= 0xFF }.split("'".toRegex())
-                buildSpannedString {
-                    append(composition.filter { it.code > 0xFF })
-                    comment.split("'").zip(compositionList).forEach { (pinyin, composition) ->
-                        append(if (composition.length >= pinyin.length) pinyin else pinyin.substring(0, composition.length))
-                        append("'")
-                    }
-                    if (!composition.endsWith("'")) delete(length - 1, length)
-                }
+                QwertyPinYinUtils.getQwertyComposition(composition, comment)
             }
         }
+        return if (!composition.endsWith("'") && result.endsWith("'")) result.dropLast(1) else result
     }
 
     /**
@@ -293,170 +261,4 @@ object RimeEngine {
         return Rime.getRimeKeycodeByName(name)
     }
 
-    private class KeyRecordStack {
-        private val keyRecords = ArrayList<InputKey>(20)
-
-        fun pop(): InputKey? = keyRecords.removeLastOrNull()
-
-        fun clear() = keyRecords.clear()
-
-        fun getkeyRecords():ArrayList<InputKey> = keyRecords
-
-        inline fun forEachReversed(action: (InputKey) -> Unit) {
-            for (i in keyRecords.indices.reversed()) {
-                action(keyRecords[i])
-            }
-        }
-
-        fun pushKey(keyCode: Int): Boolean {
-            val lastKey = keyRecords.lastOrNull()
-            if (lastKey is InputKey.Apostrophe && keyRecords.size == 1) {
-                processDelAction()
-            }else if (keyCode == KeyEvent.KEYCODE_APOSTROPHE) {
-                // 连续分词没有意义
-                if (lastKey is InputKey.Apostrophe) return false
-                // 选择拼音之后分词没有意义，但是需要把分词操作入栈
-                if (lastKey == InputKey.SelectPinyinAction) {
-                    keyRecords.add(InputKey.Apostrophe(true))
-                    return false
-                }
-            }
-            // 选择拼音只是记录其是不是最后一个操作，如果不是在选择之后立即删除，则不需记录
-            if (lastKey == InputKey.SelectPinyinAction) {
-                keyRecords.removeLastOrNull()
-            }
-            when (keyCode) {
-                KeyEvent.KEYCODE_APOSTROPHE -> {
-                    keyRecords.add(InputKey.Apostrophe())
-                }
-                in KeyEvent.KEYCODE_1..KeyEvent.KEYCODE_9 -> {
-                    keyRecords.add(InputKey.T9Key(keyCode))
-                }
-                in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z -> {
-                    keyRecords.add(InputKey.QwertKey(keyCode))
-                }
-                else -> {
-                    keyRecords.add(InputKey.DefaultAction)
-                }
-            }
-            return true
-        }
-
-        fun pushPinyinSelectAction(pinyin: String?): InputKey.PinyinKey? {
-            pinyin ?: return null
-            // 第一个T9Key替换为PinyinKey，并把其后 pinyin.length-1 个T9Key删除
-            val records = ArrayList<InputKey?>(keyRecords.size)
-            var firstT9KeyPos = -1
-            var accLen = 0
-            keyRecords.mapIndexedTo(records) { i, inputKey ->
-                if (firstT9KeyPos < 0 && inputKey is InputKey.T9Key && !inputKey.consumed) {
-                    firstT9KeyPos = i
-                }
-                when {
-                    firstT9KeyPos < 0 -> inputKey
-                    firstT9KeyPos == i -> {
-                        accLen = 1
-                        InputKey.PinyinKey(pinyin)
-                    }
-                    accLen > 0 && accLen < pinyin.length -> {
-                        if (inputKey is InputKey.T9Key) {
-                            ++accLen
-                            null
-                        } else {
-                            inputKey
-                        }
-                    }
-                    inputKey == InputKey.SelectPinyinAction -> null
-                    else -> inputKey
-                }
-            }
-            keyRecords.clear()
-            keyRecords.addAll(records.filterNotNull())
-            keyRecords.add(InputKey.SelectPinyinAction)
-            val index = keyRecords.indexOfLast { it is InputKey.PinyinKey }
-            if (index >= 0) {
-                val posInInput = keyRecords.subList(0, index).fold(0) { acc, inputKey ->
-                    acc + when (inputKey) {
-                        is InputKey.T9Key -> 1
-                        is InputKey.PinyinKey -> inputKey.inputKeyLength
-                        else -> 0
-                    }
-                }
-                keyRecords[index] = (keyRecords[index] as InputKey.PinyinKey).copy(posInInput)
-            }
-            return keyRecords.getOrNull(index) as? InputKey.PinyinKey
-        }
-
-        fun pushCandidateSelectAction() {
-            if (keyRecords.lastOrNull() == InputKey.SelectPinyinAction) {
-                keyRecords.removeLastOrNull()
-            }
-            keyRecords.add(InputKey.DefaultAction)
-        }
-
-        fun restorePinyinToT9Key(pinyinKey: InputKey.PinyinKey? = null): InputKey.PinyinKey? {
-            if (pinyinKey != null) {
-                keyRecords.add(pinyinKey)
-            }
-            val index = keyRecords.indexOfLast { it is InputKey.PinyinKey }
-            val inputKey = keyRecords.getOrNull(index) as? InputKey.PinyinKey
-            if (index >= 0) {
-                keyRecords.replaceAt(index, inputKey!!.restoreToT9key())
-            }
-            return inputKey
-        }
-
-        private fun <T> ArrayList<T>.replaceAt(index: Int, elements: List<T>) {
-            if (index == lastIndex) {
-                removeAt(index)
-                addAll(elements)
-            } else {
-                val heads = take(index)
-                val tails = takeLast(size - index - 1)
-                clear()
-                addAll(heads)
-                addAll(elements)
-                addAll(tails)
-            }
-        }
-    }
-
-    private interface InputKey {
-        class Apostrophe(val dummy: Boolean = false) : InputKey
-
-        object DefaultAction : InputKey
-
-        object SelectPinyinAction : InputKey
-
-        class T9Key(val keyChar: String, var consumed: Boolean = false) : InputKey {
-            constructor(keyCode: Int) : this(String(intArrayOf(keyCode - KeyEvent.KEYCODE_0 + '0'.code), 0, 1))
-
-            override fun toString(): String = keyChar
-        }
-
-        class QwertKey(val keyChar: String) : InputKey {
-            constructor(keyCode: Int) : this(String(intArrayOf(keyCode - KeyEvent.KEYCODE_A + 'a'.code), 0, 1))
-
-            override fun toString(): String = keyChar
-        }
-
-
-        class PinyinKey(private val pinyin: String, val posInInput: Int = 0) : InputKey {
-            private var t9InputKeys: String? = null
-
-            val pinyinLength: Int = pinyin.length
-            val inputKeyLength: Int = pinyinLength + 1
-
-            fun t9Keys() = t9InputKeys ?: restoreToT9key().joinToString("")
-
-            fun restoreToT9key(): List<T9Key> =
-                pinyin.map { T9Key(T9PinYinUtils.pinyin2T9Key(it).toString()) }.also {
-                    t9InputKeys = it.joinToString("")
-                }
-
-            fun copy(posInInput: Int) = PinyinKey(pinyin, posInInput)
-
-            fun inputKeys() = "${pinyin.lowercase()}'"
-        }
-    }
 }

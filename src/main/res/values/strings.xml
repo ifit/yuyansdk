@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <resources>
     <string name="ime_yuyan_name">语燕输入法</string>
-    <string name="ime_yuyan_name_debug">语燕输入D</string>
+    <string name="ime_yuyan_name_debug">语燕输入法</string>
     <!--设置页面-->
     <string name="setting_ime_sdk">输入法设置</string>
     <string name="setting_ime_input">输入设置</string>
@@ -13,7 +13,7 @@
     <string name="setting_ime_keyboard_height">键盘调节</string>
     <string name="ime_settings_voice">语音识别</string>
     <string name="ime_settings_handwriting">手写设置</string>
-    <string name="keypopup_input_settings">按键气泡提示</string>
+    <string name="keypopup_input_settings">按键气泡</string>
     <string name="long_press_timeout">按键长按灵敏度</string>
     <string name="keyboard_mnemonic_show">双拼提示</string>
     <string name="keyboard_double_input_key">双拼显示完整拼音</string>
@@ -21,13 +21,16 @@
     <string name="keyboard_symbol_show">上划选择符号</string>
     <string name="candidate_size_input_setting">候选词字体大小</string>
     <string name="keyboard_font_bold">键盘字体加粗</string>
+    <string name="keyboard_font_size">键盘字体大小</string>
     <string name="changeKeyboard">切换键盘</string>
     <string name="chinese_input_setting">中文输入</string>
     <string name="search_english_cell">英文单词补全</string>
     <string name="setting_jian_fan">繁体输入</string>
     <string name="chinese_association">中文联想</string>
+    <string name="chinese_association_date">中文联想显示时间</string>
     <string name="EnglishInput">英文输入</string>
     <string name="engish_full_keyboard">数字行</string>
+    <string name="lx17_with_left_prefix">乱序17键盘显示拼音选择</string>
     <string name="space_auto">英文单词自动追加空格</string>
     <string name="emoji_setting">表情输入</string>
     <string name="emoji_input">候选词中显示Emoji表情</string>
@@ -77,6 +80,7 @@
     <string name="keyboard_full_display_key_center">中间区域</string>
     <string name="phrases">常用语</string>
     <string name="add_phrases">增加常用语</string>
+    <string name="wechat">微信</string>
     <string name="add_phrases_input_hint">输入常用内容</string>
     <string name="add_phrases_input_tips">快捷输入为拼音首字母前4位：</string>
     <string name="keyboard">键盘</string>
@@ -84,6 +88,8 @@
     <string name="clipboard_suggestion_timeout">剪贴板提示超时</string>
     <string name="source_code">源代码</string>
     <string name="privacy_policy">隐私政策</string>
+    <string name="privacy_policy_sure">同意</string>
+    <string name="privacy_policy_cancel">拒绝</string>
     <string name="license">开放许可</string>
     <string name="github_repo">GitHub 仓库</string>
     <string name="reset">重置</string>
@@ -92,6 +98,7 @@
     <string name="sidebar_symbol_pinyin">拼音侧边栏</string>
     <string name="sidebar_symbol_number">数字侧边栏</string>
     <string name="more">更多</string>
+    <string name="add">新增</string>
     <string name="clipboard_suggestion">显示剪贴板提示</string>
     <string name="system_default">系统默认</string>
     <string name="num_50">50条</string>
@@ -159,7 +166,7 @@
     <string name="keyboard_name_pinyin_lx_17">乱序17</string>
     <string name="keyboard_iv_menu_close">关闭键盘</string>
     <string name="space_swipe_move_cursor">滑动空格键移动光标</string>
-    <string name="keyboard_delete_location_top">九宫格删除键位置居顶</string>
+    <string name="swipe_move_cursor_speed">触发移动光标所需距离</string>
     <string name="keyboard_menu_float">悬浮键盘</string>
 
     <string name="emoticons">颜文字</string>
@@ -206,10 +213,17 @@
     <string name="menu_text_edit">文本编辑</string>
     <string name="export_user_data">导出用户数据</string>
     <string name="import_user_data">导入用户数据</string>
+    <string name="app_log">日志</string>
+    <string name="export_crash_log">导出崩溃日志</string>
     <string name="exception_user_data_filename">文件的拓展名不是备份数据</string>
     <string name="exception_user_data_metadata">找不到用户数据的元数据</string>
     <string name="user_data_imported">已导入数据，请重启</string>
     <string name="confirm_import_user_data">导入用户数据会覆盖本地设置与输入历史，并且在重启应用后才能生效。继续吗？</string>
     <string name="restart_channel">应用重启</string>
     <string name="restart_notify_msg">应用已被重启，点击此处打开</string>
+
+    <string name="keyboard_style_mod">键盘风格</string>
+    <string name="keyboard_style_mod_yuyan">默认</string>
+    <string name="keyboard_style_mod_google">谷歌</string>
+    <string name="keyboard_style_mod_samsung">三星</string>
 </resources>

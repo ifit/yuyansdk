@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.flexbox.FlexDirection
 import com.google.android.flexbox.FlexWrap
+import com.google.android.flexbox.FlexboxLayoutManager
 import com.google.android.flexbox.JustifyContent
 import com.yuyan.imemodule.R
 import com.yuyan.imemodule.adapter.CandidatesAdapter
@@ -55,7 +56,7 @@ import splitties.views.dsl.core.wrapContent
 @SuppressLint("ViewConstructor")
 class CandidatesContainer(context: Context, inputView: InputView) : BaseContainer(context, inputView) {
     private val mSideSymbolsPinyin:List<SideSymbol>
-    private lateinit var mRVSymbolsView: RecyclerView
+    private lateinit var mRVSymbolsView: SwipeRecyclerView
     private lateinit var mCandidatesAdapter: CandidatesAdapter
     private var mRVLeftPrefix = inflate(getContext(), R.layout.sdk_view_rv_prefix, null) as SwipeRecyclerView
     private var isLoadingMore = false // 正在加载更多
@@ -79,7 +80,7 @@ class CandidatesContainer(context: Context, inputView: InputView) : BaseContaine
     }
 
     private fun initView(context: Context) {
-        mRVSymbolsView = RecyclerView(context)
+        mRVSymbolsView = SwipeRecyclerView(context)
         mRVSymbolsView.setHasFixedSize(true)
         mRVSymbolsView.setItemAnimator(null)
         mRVLeftPrefix.setLayoutManager(LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false))
@@ -107,7 +108,7 @@ class CandidatesContainer(context: Context, inputView: InputView) : BaseContaine
                             isLoadingMore = true
                             val lastItem = (recyclerView.layoutManager as CustomFlexboxLayoutManager).findLastCompletelyVisibleItemPosition()
                             DecodingInfo.activeCandidate = lastItem
-                            if (DecodingInfo.candidateSize - lastItem <= 20) { // 未加载中、未加载完、向下滑动、还有30个数据滑动到底
+                            if (DecodingInfo.candidateSize - lastItem <= 5) { // 未加载中、未加载完、向下滑动、还有30个数据滑动到底
                                 DecodingInfo.nextPageCandidates
                             }
                             isLoadingMore = false
@@ -115,6 +116,9 @@ class CandidatesContainer(context: Context, inputView: InputView) : BaseContaine
                     }
                 }
             }
+        })
+        mRVSymbolsView.addFooterView(View(context).apply {
+            layoutParams = FlexboxLayoutManager.LayoutParams(FlexboxLayoutManager.LayoutParams.MATCH_PARENT, dp(50))
         })
     }
 
@@ -140,14 +144,14 @@ class CandidatesContainer(context: Context, inputView: InputView) : BaseContaine
             when (motionEvent.action) {
                 MotionEvent.ACTION_DOWN -> {
                     // 播放按键声音和震动
-                    DevicesUtils.tryPlayKeyDown(SoftKey(KeyEvent.KEYCODE_DEL))
+                    DevicesUtils.tryPlayKeyDown(KeyEvent.KEYCODE_DEL)
                     DevicesUtils.tryVibrate(this)
                 }
                 MotionEvent.ACTION_MOVE -> { }
                 MotionEvent.ACTION_UP -> {
                     inputView.responseKeyEvent(SoftKey(KeyEvent.KEYCODE_DEL))
                     if(DecodingInfo.isFinish) {
-                        KeyboardManager.instance.switchKeyboard(InputModeSwitcherManager.skbImeLayout)
+                        KeyboardManager.instance.switchKeyboard()
                         (KeyboardManager.instance.currentContainer as? T9TextContainer)?.updateSymbolListView()
                     }
                 }
@@ -179,7 +183,7 @@ class CandidatesContainer(context: Context, inputView: InputView) : BaseContaine
             } else {
                 mCandidatesAdapter.notifyDataSetChanged()
             }
-            if(DecodingInfo.candidateSize > DecodingInfo.activeCandidate) mRVSymbolsView.scrollToPosition(DecodingInfo.activeCandidate)
+//            if(DecodingInfo.candidateSize > DecodingInfo.activeCandidate) mRVSymbolsView.scrollToPosition(DecodingInfo.activeCandidate)
             if (InputModeSwitcherManager.isChineseT9) {
                 mRVLeftPrefix.visibility = VISIBLE
                 updatePrefixsView()
@@ -202,8 +206,8 @@ class CandidatesContainer(context: Context, inputView: InputView) : BaseContaine
             if (isPrefixs) {
                 inputView.selectPrefix(position)
             } else {
-                val softKey = SoftKey( mSideSymbolsPinyin.map { it.symbolValue }[position])
-                DevicesUtils.tryPlayKeyDown(softKey)
+                val softKey = SoftKey(label = mSideSymbolsPinyin.map { it.symbolValue }[position])
+                DevicesUtils.tryPlayKeyDown()
                 DevicesUtils.tryVibrate(this)
                 inputView.responseKeyEvent(softKey)
             }

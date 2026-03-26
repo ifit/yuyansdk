@@ -7,7 +7,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import com.yuyan.imemodule.R
-import com.yuyan.imemodule.application.ImeSdkApplication
+import com.yuyan.imemodule.application.Launcher
 import com.yuyan.imemodule.application.CustomConstant
 import com.yuyan.imemodule.manager.InputModeSwitcherManager
 import com.yuyan.imemodule.prefs.behavior.ClipboardLayoutMode
@@ -28,7 +28,7 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         val dataDictVersion = int("rime_dict_data_version", 0)  //缓存rime词库版本号,用于校验是否覆盖词库文件
         val keyboardHeightRatio = float("keyboard_height_ratio", 0.3f)     //键盘高度比例
         val keyboardHeightRatioLandscape = float("keyboard_height_ratio_landscape", 0.3f)     //键盘高度比例:横屏
-        val candidatesHeightRatio = float("candidates_height_ratio", 0.07f)     //候选词栏高度比例
+        val candidatesHeightRatio = float("candidates_height_ratio", 0.035f)     //候选词栏高度比例
         val candidatesHeightRatioLandscape = float("candidates_height_ratio_landscape", 0.07f)     //候选词栏高度比例:横屏
         val keyboardModeFloat = bool("keyboard_mode_float", false)     // 悬浮模式
         val keyboardModeFloatLandscape = bool("keyboard_mode_float_landscape", false)// 悬浮模式:横屏
@@ -47,6 +47,8 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
 
         val soundOnKeyPress = int("key_press_vibration_amplitude",0)     //按键音量
         val vibrationAmplitude = int("key_press_sound_volume", 0)     //触感强度
+
+        val privacyPolicySure = bool("privacy_policy_sure", false) //是否同意隐私政策
     }
 
     inner class Input : ManagedPreferenceCategory(R.string.setting_ime_input, sharedPreferences) {
@@ -85,6 +87,10 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             R.string.chinese_association, "chinese_association_enable", true
         )
 
+        val chinesePredictionDate = switch(
+            R.string.chinese_association_date, "chinese_association_date_enable", true
+        )
+
         val titleEnglish = category(R.string.EnglishInput)
 
         //输出英文单词:英文补全
@@ -113,10 +119,10 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
 
         val candidateTextSize = int(
             R.string.candidate_size_input_setting,
-            "candidate_size_input_setting",
-            10,
-            -20,
-            40,
+            "candidate_size",
+            55,
+            25,
+            100,
             "%",
             defaultLabel = R.string.system_default
         )
@@ -137,9 +143,22 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
 
         val abcNumberLine = switch(R.string.engish_full_keyboard, "keyboard_abc_number_line_enable", false)
 
+        val lx17WithLeftPrefix = switch(R.string.lx17_with_left_prefix, "lx17_with_left_prefix_enable", true)
+
         val keyboardDoubleInputKey = switch(R.string.keyboard_double_input_key, "keyboard_double_input_pinyin_enable", true)
 
+        val keyboardMnemonic = switch(R.string.keyboard_mnemonic_show, "keyboard_mnemonic_show_enable", false)
+
         val spaceSwipeMoveCursor = switch(R.string.space_swipe_move_cursor, "space_swipe_move_cursor", true)
+
+        val spaceSwipeMoveCursorSpeed = int(
+            R.string.swipe_move_cursor_speed,
+            "swipe_move_cursor_speed",
+            10,
+            1,
+            50,
+            "px"
+        )
 
         // 锁定英语键盘:锁定后，切换到英语键盘，下次弹出键盘使用英语模式
         val keyboardLockEnglish = switch(R.string.keyboard_menu_lock_english, "keyboard_menu_lock_english_enable", false)
@@ -221,7 +240,7 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             "clipboard_limit",
             50,
             10,
-            500,
+            110,
             "条",
             10,
             defaultLabel = R.string.num_50
@@ -290,7 +309,7 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
 
     @RequiresApi(Build.VERSION_CODES.N)
     fun syncToDeviceEncryptedStorage() {
-        val ctx = ImeSdkApplication.context.createDeviceProtectedStorageContext()
+        val ctx = Launcher.instance.context.createDeviceProtectedStorageContext()
         val sp = PreferenceManager.getDefaultSharedPreferences(ctx)
         sp.edit {
             internal.managedPreferences.forEach {

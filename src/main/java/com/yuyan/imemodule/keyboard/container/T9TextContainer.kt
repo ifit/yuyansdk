@@ -17,7 +17,6 @@ import com.yuyan.imemodule.database.DataBaseKT
 import com.yuyan.imemodule.database.entry.SideSymbol
 import com.yuyan.imemodule.entity.keyboard.SoftKey
 import com.yuyan.imemodule.manager.InputModeSwitcherManager
-import com.yuyan.imemodule.prefs.AppPrefs
 import com.yuyan.imemodule.service.DecodingInfo
 import com.yuyan.imemodule.singleton.EnvironmentSingleton
 import com.yuyan.imemodule.utils.AppUtil
@@ -39,20 +38,21 @@ import splitties.views.dsl.core.margin
  *  输入键盘占据全部空间，左上角由拼音选择栏占位按键[InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_SYMBOL_12]站位。
  *
  *  拼音选择栏（无拼音时显示中文符号）位于键盘左上角，拼音选择栏占位按键正上方。
- *
- * 与数字键盘容器[NumberContainer]类似。
  */
 @SuppressLint("ViewConstructor")
-class T9TextContainer(context: Context?, inputView: InputView) : InputBaseContainer(context, inputView) {
+open class T9TextContainer(context: Context?, inputView: InputView, skbValue: Int = 0) : InputBaseContainer(context, inputView) {
+    private var mSkbValue: Int = 0
     private val mSideSymbolsPinyin:List<SideSymbol>
     // 键盘、候选词界面上符号(T9左侧、手写右侧)、候选拼音ListView
     private val mRVLeftPrefix : SwipeRecyclerView = inflate(getContext(), R.layout.sdk_view_rv_prefix, null) as SwipeRecyclerView
     private val mLlAddSymbol : LinearLayout = LinearLayout(context).apply{
-        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,LinearLayout.LayoutParams.WRAP_CONTENT).apply { margin = (dp(20)) }
+        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT).apply { margin = (dp(20)) }
         gravity = Gravity.CENTER
     }
 
     init {
+        mSkbValue = skbValue
         val ivAddSymbol = ImageView(context).apply {
             setPadding(dp(5))
             setImageResource(R.drawable.ic_menu_setting)
@@ -60,11 +60,12 @@ class T9TextContainer(context: Context?, inputView: InputView) : InputBaseContai
         }
         ivAddSymbol.setOnClickListener { _:View ->
             val arguments = Bundle()
-            arguments.putInt("type", 0)
+            arguments.putInt("type", if(skbValue == InputModeSwitcherManager.MASK_SKB_LAYOUT_NUMBER) 1 else 0)
             AppUtil.launchSettingsToPrefix(context!!, arguments)
         }
         mLlAddSymbol.addView(ivAddSymbol)
-        mSideSymbolsPinyin = DataBaseKT.instance.sideSymbolDao().getAllSideSymbolPinyin()
+        mSideSymbolsPinyin =  if(skbValue == InputModeSwitcherManager.MASK_SKB_LAYOUT_NUMBER) DataBaseKT.instance.sideSymbolDao().getAllSideSymbolNumber()
+                else DataBaseKT.instance.sideSymbolDao().getAllSideSymbolPinyin()
     }
 
     /**
@@ -77,15 +78,23 @@ class T9TextContainer(context: Context?, inputView: InputView) : InputBaseContai
             addView(mMajorView, params)
             mMajorView!!.setResponseKeyEvent(inputView)
         }
-        val softKeyboard = instance.getSoftKeyboard(AppPrefs.getInstance().internal.inputDefaultMode.getValue() and InputModeSwitcherManager.MASK_SKB_LAYOUT)
+        val softKeyboard = instance.getSoftKeyboard(mSkbValue)
         mMajorView!!.setSoftKeyboard(softKeyboard)
         updateKeyboardView()
         mMajorView!!.invalidate()
     }
 
     // 更新键盘上侧边符号列表
-    protected fun updateKeyboardView() {
-        val prefixLayoutParams = createLayoutParams()
+    private fun updateKeyboardView() {
+        val softKeyboard = mMajorView!!.getSoftKeyboard()
+        val softKeySymbolHolder = softKeyboard.getKeyByCode(InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_SYMBOL_12) ?: return
+        val prefixLayoutParams = LayoutParams(softKeySymbolHolder.width(), LayoutParams.MATCH_PARENT)
+        prefixLayoutParams.setMargins(
+            softKeyboard.keyXMargin,
+            softKeySymbolHolder.mTop + softKeyboard.keyYMargin,
+            softKeyboard.keyXMargin,
+            EnvironmentSingleton.instance.skbHeight - softKeySymbolHolder.mBottom + softKeyboard.keyYMargin
+        )
         val prefixLayoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
         mRVLeftPrefix.setLayoutManager(prefixLayoutManager)
         if (mRVLeftPrefix.parent != null) {
@@ -94,22 +103,6 @@ class T9TextContainer(context: Context?, inputView: InputView) : InputBaseContai
         }
         addView(mRVLeftPrefix, prefixLayoutParams)
         updateSymbolListView()
-    }
-
-    private fun createLayoutParams(): LayoutParams {
-        val softKeyboard = mMajorView!!.getSoftKeyboard()
-        val softKeySymbolHolder =
-            softKeyboard.getKeyByCode(InputModeSwitcherManager.USER_DEF_KEYCODE_LEFT_SYMBOL_12)
-        val prefixLayoutParams = LayoutParams(
-            softKeySymbolHolder!!.width(), LayoutParams.MATCH_PARENT
-        )
-        prefixLayoutParams.setMargins(
-            softKeyboard.keyXMargin,
-            softKeySymbolHolder.mTop + softKeyboard.keyYMargin,
-            softKeyboard.keyXMargin,
-            EnvironmentSingleton.instance.skbHeight - softKeySymbolHolder.mBottom + softKeyboard.keyYMargin
-        )
-        return prefixLayoutParams
     }
 
     //更新符号显示,九宫格左侧符号栏
@@ -131,9 +124,9 @@ class T9TextContainer(context: Context?, inputView: InputView) : InputBaseContai
         mRVLeftPrefix.setOnItemClickListener{ _: View?, position: Int ->
             if (!isPrefixs) {
                 val symbol = mSideSymbolsPinyin.map { it.symbolValue }[position]
-                val softKey = SoftKey(symbol)
+                val softKey = SoftKey(label = symbol)
                 // 播放按键声音和震动
-                DevicesUtils.tryPlayKeyDown(softKey)
+                DevicesUtils.tryPlayKeyDown()
                 DevicesUtils.tryVibrate(this)
                 inputView.responseKeyEvent(softKey)
             } else {

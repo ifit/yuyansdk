@@ -45,6 +45,10 @@ object DecodingInfo {
         // 候选词列表是否为空
         get() = candidatesLiveData.value?:emptyList()
 
+    fun getCurrentRimeSchema(): String {
+        return Kernel.getCurrentRimeSchema()
+    }
+
     // 增加拼写字符
     fun inputAction(event: KeyEvent) {
         isReset = false
@@ -87,7 +91,7 @@ object DecodingInfo {
         get() = Kernel.isFinish
 
     val composingStrForDisplay: String   //获取显示的拼音字符串/
-        get() = Kernel.wordsShowPinyin
+        get() = if(Kernel.unHandWriting())Kernel.wordsShowPinyin else if(candidateSize > 0) candidates[0].comment else ""
 
     val composingStrForCommit: String   // 获取输入的拼音字符串
         get() = Kernel.wordsShowPinyin.replace("'", "").ifEmpty { getCandidate(0)?.text?:""}

@@ -13,8 +13,8 @@ import com.yuyan.imemodule.data.emojicon.YuyanEmojiCompat
 import com.yuyan.imemodule.data.theme.Theme
 import com.yuyan.imemodule.data.theme.ThemeManager.OnThemeChangeListener
 import com.yuyan.imemodule.data.theme.ThemeManager.addOnChangedListener
+import com.yuyan.imemodule.data.theme.ThemeManager.onSystemDarkModeChange
 import com.yuyan.imemodule.data.theme.ThemeManager.removeOnChangedListener
-import com.yuyan.imemodule.manager.InputModeSwitcherManager
 import com.yuyan.imemodule.prefs.AppPrefs.Companion.getInstance
 import com.yuyan.imemodule.prefs.behavior.SkbMenuMode
 import com.yuyan.imemodule.singleton.EnvironmentSingleton
@@ -23,6 +23,7 @@ import com.yuyan.imemodule.keyboard.InputView
 import com.yuyan.imemodule.keyboard.KeyboardManager
 import com.yuyan.imemodule.keyboard.container.ClipBoardContainer
 import com.yuyan.imemodule.utils.StringUtils
+import com.yuyan.imemodule.utils.isDarkMode
 import com.yuyan.imemodule.view.preference.ManagedPreference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -63,8 +64,14 @@ class ImeService : InputMethodService() {
         return mInputView
     }
 
+    override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        YuyanEmojiCompat.setEditorInfo(attribute)
+        super.onStartInput(attribute, restarting)
+    }
+
     override fun onStartInputView(editorInfo: EditorInfo, restarting: Boolean) {
         if (::mInputView.isInitialized)mInputView.onStartInputView(editorInfo, restarting)
+        super.onStartInputView(editorInfo, restarting)
     }
 
     override fun onDestroy() {
@@ -84,8 +91,9 @@ class ImeService : InputMethodService() {
             EnvironmentSingleton.instance.initData()
             KeyboardLoaderUtil.instance.clearKeyboardMap()
             KeyboardManager.instance.clearKeyboard()
-            if (::mInputView.isInitialized) KeyboardManager.instance.switchKeyboard(InputModeSwitcherManager.skbImeLayout)
+            if (::mInputView.isInitialized) KeyboardManager.instance.switchKeyboard()
         }
+        onSystemDarkModeChange(newConfig.isDarkMode())
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
@@ -132,7 +140,14 @@ class ImeService : InputMethodService() {
 
     override fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
-        if (oldSelStart == oldSelEnd && newSelStart == newSelEnd && ::mInputView.isInitialized) mInputView.onUpdateSelection()
+        if (::mInputView.isInitialized) mInputView.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesEnd)
+    }
+
+    override fun onWindowShown() {
+        if(isWindowShown) return
+        isWindowShown = true
+        if (::mInputView.isInitialized) mInputView.onWindowShown()
+        super.onWindowShown()
     }
 
     override fun onWindowShown() {
@@ -202,6 +217,14 @@ class ImeService : InputMethodService() {
         currentInputConnection.setComposingText(text, 1)
     }
 
+
+    /**
+     * 结束提交预选词
+     */
+    fun finishComposingText() {
+        currentInputConnection.finishComposingText()
+    }
+
     /**
      * 发送字符串给编辑框
      */
@@ -209,15 +232,30 @@ class ImeService : InputMethodService() {
         currentInputConnection.commitText(StringUtils.converted2FlowerTypeface(text), 1)
     }
 
+    /**
+     * 发送字符串给编辑框
+     */
+    fun commitText(text: String, newCursorPosition: Int) {
+        currentInputConnection.commitText(StringUtils.converted2FlowerTypeface(text), newCursorPosition)
+    }
+
     fun getTextBeforeCursor(length:Int) : String {
         return currentInputConnection.getTextBeforeCursor(length, 0).toString()
     }
 
-    fun commitTestEditMenu(id:Int) {
+    fun commitTextEditMenu(id:Int) {
         currentInputConnection.performContextMenuAction(id)
+    }
+
+    fun performEditorAction(editorAction:Int) {
+        currentInputConnection.performEditorAction(editorAction)
     }
 
     fun deleteSurroundingText(length:Int) {
         currentInputConnection.deleteSurroundingText(length, 0)
+    }
+
+    fun setSelection(start: Int, end: Int) {
+        currentInputConnection.setSelection(start, end)
     }
 }

@@ -3,6 +3,7 @@ package com.yuyan.imemodule.adapter
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -22,6 +23,7 @@ import com.yuyan.imemodule.manager.InputModeSwitcherManager
 import com.yuyan.imemodule.prefs.AppPrefs
 import com.yuyan.imemodule.prefs.behavior.SkbMenuMode
 import com.yuyan.imemodule.singleton.EnvironmentSingleton
+import com.yuyan.imemodule.singleton.EnvironmentSingleton.Companion.instance
 
 class MenuAdapter (context: Context?, val data: MutableList<SkbFunItem>) : RecyclerView.Adapter<MenuAdapter.SymbolHolder>() {
     private val inflater: LayoutInflater
@@ -119,7 +121,6 @@ class MenuAdapter (context: Context?, val data: MutableList<SkbFunItem>) : Recyc
             SkbMenuMode.OneHanded -> AppPrefs.getInstance().keyboardSetting.oneHandedModSwitch.getValue()
             SkbMenuMode.FlowerTypeface -> CustomConstant.flowerTypeface != FlowerTypefaceMode.Disabled
             SkbMenuMode.FloatKeyboard -> EnvironmentSingleton.instance.keyboardModeFloat
-
             // Keyboard Menu
             SkbMenuMode.PinyinT9 -> rimeValue == CustomConstant.SCHEMA_ZH_T9
             SkbMenuMode.Pinyin26Jian -> rimeValue == CustomConstant.SCHEMA_ZH_QWERTY

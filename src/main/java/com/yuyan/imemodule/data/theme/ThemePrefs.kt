@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import com.yuyan.imemodule.R
 import com.yuyan.imemodule.prefs.ManagedPreferenceCategory
 import com.yuyan.imemodule.prefs.behavior.KeyboardSymbolSlideUpMod
+import com.yuyan.imemodule.prefs.behavior.SkbStyleMode
 import com.yuyan.imemodule.view.preference.ManagedPreference
 
 class ThemePrefs(sharedPreferences: SharedPreferences) :
@@ -37,6 +38,23 @@ class ThemePrefs(sharedPreferences: SharedPreferences) :
     ).also {
         it.register()
     }
+
+    val skbStyleMode = list(
+        R.string.keyboard_style_mod,
+        "keyboard_style_mod",
+        SkbStyleMode.Yuyan,
+        SkbStyleMode,
+        listOf(
+            SkbStyleMode.Yuyan,
+            SkbStyleMode.Google,
+            SkbStyleMode.Samsung
+        ),
+        listOf(
+            R.string.keyboard_style_mod_yuyan,
+            R.string.keyboard_style_mod_google,
+            R.string.keyboard_style_mod_samsung,
+        )
+    )
 
     val followSystemDayNightTheme = switch(
         R.string.follow_system_day_night_theme,
@@ -74,6 +92,15 @@ class ThemePrefs(sharedPreferences: SharedPreferences) :
     val keyboardFontBold =
         switch(R.string.keyboard_font_bold, "keyboard_font_bold_enable", true)
 
+    val keyboardFontSize = int(
+        R.string.keyboard_font_size,
+        "keyboard_font_size",
+        100,
+        70,
+        170,
+        "%"
+    )
+
     val keyboardSymbol =
         switch(R.string.keyboard_symbol_show, "keyboard_symbol_show_enable", true)
 
@@ -95,12 +122,6 @@ class ThemePrefs(sharedPreferences: SharedPreferences) :
     ) {
         keyboardSymbol.getValue()
     }
-
-    val keyboardMnemonic = switch(R.string.keyboard_mnemonic_show, "keyboard_mnemonic_show_enable", false)
-
-    val deleteLocationTop =
-        switch(R.string.keyboard_delete_location_top, "keyboard_delete_location_top", true)
-
     val keyBorder = switch(R.string.key_border, "key_border", true)
 
     val keyXMargin: ManagedPreference.PInt

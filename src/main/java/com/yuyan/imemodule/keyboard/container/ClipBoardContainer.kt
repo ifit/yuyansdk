@@ -13,23 +13,22 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.yuyan.imemodule.R
 import com.yuyan.imemodule.adapter.ClipBoardAdapter
 import com.yuyan.imemodule.application.CustomConstant
-import com.yuyan.imemodule.data.theme.ThemeManager
+import com.yuyan.imemodule.data.theme.ThemeManager.activeTheme
 import com.yuyan.imemodule.database.DataBaseKT
 import com.yuyan.imemodule.database.entry.Clipboard
 import com.yuyan.imemodule.libs.recyclerview.SwipeMenu
 import com.yuyan.imemodule.libs.recyclerview.SwipeMenuBridge
 import com.yuyan.imemodule.libs.recyclerview.SwipeMenuItem
 import com.yuyan.imemodule.libs.recyclerview.SwipeRecyclerView
-import com.yuyan.imemodule.manager.InputModeSwitcherManager
 import com.yuyan.imemodule.prefs.AppPrefs
 import com.yuyan.imemodule.prefs.behavior.ClipboardLayoutMode
 import com.yuyan.imemodule.prefs.behavior.PopupMenuMode
 import com.yuyan.imemodule.prefs.behavior.SkbMenuMode
 import com.yuyan.imemodule.singleton.EnvironmentSingleton
-import com.yuyan.imemodule.utils.DevicesUtils
 import com.yuyan.imemodule.keyboard.InputView
 import com.yuyan.imemodule.keyboard.KeyboardManager
 import com.yuyan.imemodule.manager.layout.CustomGridLayoutManager
+import com.yuyan.imemodule.singleton.EnvironmentSingleton.Companion.instance
 import splitties.dimensions.dp
 import splitties.views.textResource
 import kotlin.math.ceil
@@ -55,8 +54,8 @@ class ClipBoardContainer(context: Context, inputView: InputView) : BaseContainer
         mTVLable = TextView(context).apply {
             textResource = R.string.clipboard_empty_ltip
             gravity = Gravity.CENTER
-            setTextColor(ThemeManager.activeTheme.keyTextColor)
-            textSize = DevicesUtils.px2dip(EnvironmentSingleton.instance.candidateTextSize)
+            setTextColor(activeTheme.keyTextColor)
+            textSize = instance.candidateTextSize
         }
         mRVSymbolsView.setItemAnimator(null)
         val layoutParams2 = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
@@ -94,7 +93,7 @@ class ClipBoardContainer(context: Context, inputView: InputView) : BaseContainer
         if (viewParent != null) {
             (viewParent as ViewGroup).removeView(mTVLable)
         }
-        if(copyContents.size == 0){
+        if(copyContents.isEmpty()){
             this.addView(mTVLable, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         }
         val adapter = ClipBoardAdapter(context, copyContents)
@@ -106,15 +105,14 @@ class ClipBoardContainer(context: Context, inputView: InputView) : BaseContainer
         mRVSymbolsView.setSwipeMenuCreator{ _: SwipeMenu, rightMenu: SwipeMenu, position: Int ->
             val topItem = SwipeMenuItem(mContext).apply {
                 setImage(if(itemMode == SkbMenuMode.ClipBoard) {
-                    val data: Clipboard = copyContents[position]
-                    if(data.isKeep == 1)R.drawable.ic_baseline_untop_circle_32
-                    else R.drawable.ic_baseline_top_circle_32
-                }
+                    if(copyContents[position].isKeep == 1)R.drawable.ic_baseline_untop_circle_32 else R.drawable.ic_baseline_top_circle_32 }
                 else R.drawable.ic_menu_edit)
+                image.setTint(activeTheme.keyTextColor)
             }
             rightMenu.addMenuItem(topItem)
             val deleteItem = SwipeMenuItem(mContext).apply {
                 setImage(R.drawable.ic_menu_delete)
+                image.setTint(activeTheme.keyTextColor)
             }
             rightMenu.addMenuItem(deleteItem)
         }
@@ -134,7 +132,7 @@ class ClipBoardContainer(context: Context, inputView: InputView) : BaseContainer
             } else {
                 val content = copyContents[position].content
                 if(menuBridge.position == 0) {
-                    inputView.onSettingsMenuClick(SkbMenuMode.AddPhrases, content)
+                    inputView.onSettingsMenuClick(SkbMenuMode.AddPhrases, DataBaseKT.instance.phraseDao().queryByContent(content))
                 } else if(menuBridge.position == 1){
                     DataBaseKT.instance.phraseDao().deleteByContent(content)
                     showClipBoardView(SkbMenuMode.Phrases)
@@ -147,7 +145,7 @@ class ClipBoardContainer(context: Context, inputView: InputView) : BaseContainer
     private val mHashMapSymbols = HashMap<Int, Int>() //候选词索引列数对应表
     private fun calculateColumn(data : MutableList<Clipboard>) {
         mHashMapSymbols.clear()
-        val itemWidth = EnvironmentSingleton.instance.skbWidth/6 - dp(10)
+        val itemWidth = instance.skbWidth/6 - dp(10)
         var mCurrentColumn = 0
         val contents = data.map { it.content }
         contents.forEachIndexed { position, candidate ->
