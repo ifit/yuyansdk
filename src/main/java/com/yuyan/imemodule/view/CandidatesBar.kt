@@ -74,7 +74,7 @@ class CandidatesBar(context: Context?, attrs: AttributeSet?) : RelativeLayout(co
             }
             mComposingView = TextView(context).apply {
                 includeFontPadding = false
-                setPadding(dp(10), 0, dp(10), 0)
+                setPadding(dp(10), dp(10), dp(10), 0)
             }
             candidatesData = LinearLayout(context).apply {
                 gravity = Gravity.CENTER_VERTICAL

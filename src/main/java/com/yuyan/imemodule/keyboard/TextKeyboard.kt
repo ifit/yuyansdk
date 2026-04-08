@@ -250,8 +250,7 @@ open class TextKeyboard(context: Context?) : BaseKeyboardView(context){
             mPaint.textSize =  mNormalKeyTextSize.toFloat()
             val x = softKey.mLeft + (softKey.width() - mPaint.measureText(keyLabel)) / 2.0f
             val fontHeight = mFmi.bottom - mFmi.top
-            val y = if(keyLabelSmall.isEmpty()) (softKey.mTop + softKey.mBottom) / 2.0f + fontHeight
-            else  (softKey.mTop + softKey.mBottom) / 2.0f + fontHeight *1.5f
+            val y = (softKey.mTop + softKey.mBottom) / 2.0f + fontHeight
             canvas.drawText(keyLabel, x, y, mPaint)
         }
         if (keyboardMnemonic && !TextUtils.isEmpty(keyMnemonic)) {  //助记符位于中下方
