@@ -50,7 +50,11 @@
     <fragment
         android:id="@+id/sidebarSymbolFragment"
         android:name="com.yuyan.imemodule.ui.fragment.SidebarSymbolFragment"
-        android:label="@string/setting_ime_prefixs" />
+        android:label="@string/setting_ime_prefixs" >
+        <action
+            android:id="@+id/action_sidebarSymbolFragment_to_privacyPolicyFragment"
+            app:destination="@id/privacyPolicyFragment" />
+    </fragment>
     <fragment
         android:id="@+id/inputSettingsFragment"
         android:name="com.yuyan.imemodule.ui.fragment.InputSettingsFragment"

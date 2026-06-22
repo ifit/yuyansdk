@@ -72,8 +72,16 @@ open class SettingsActivity : AppCompatActivity() {
                 else -> viewModel.enableToolbarShadow()
             }
         }
+
         if(!AppPrefs.getInstance().internal.privacyPolicySure.getValue()){
-            navController.navigate(R.id.action_settingsFragment_to_privacyPolicyFragment)
+            when (navController.currentDestination?.id) {
+                R.id.settingsFragment -> {
+                    navController.navigate(R.id.action_settingsFragment_to_privacyPolicyFragment)
+                }
+                R.id.sidebarSymbolFragment -> {
+                    navController.navigate(R.id.action_sidebarSymbolFragment_to_privacyPolicyFragment)
+                }
+            }
             return
         }
         if (SetupActivity.shouldShowUp()) {
